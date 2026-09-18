@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: trackaccess-optimiser
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: corepack enable && corepack prepare pnpm@9 --activate && pnpm install --frozen-lockfile && pnpm run build:deploy
+    startCommand: pnpm run start:deploy
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.22.2

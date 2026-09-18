@@ -1,0 +1,235 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: scheduling
+    description: Railway track access scheduling operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /schedules:
+    post:
+      operationId: createSchedule
+      tags: [scheduling]
+      summary: Generate a track access schedule
+      description: Parses the uploaded instance CSVs, schedules every activity for the selected scenario, validates hard constraints, and returns judge-ready output rows.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleInput"
+      responses:
+        "200":
+          description: Generated schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleResponse"
+        "400":
+          description: Invalid input files
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Scheduling failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    ScheduleInput:
+      type: object
+      properties:
+        scenario:
+          type: string
+          enum: [A, B, C]
+        files:
+          type: object
+          additionalProperties:
+            type: string
+          description: CSV contents keyed by filename. Supports the eight published instance filenames or a bundled text snapshot.
+      required: [scenario, files]
+    ScheduleResponse:
+      type: object
+      properties:
+        scenario:
+          type: string
+          enum: [A, B, C]
+        source:
+          type: string
+        generated_at:
+          type: string
+        summary:
+          $ref: "#/components/schemas/ScheduleSummary"
+        contract_results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContractResult"
+        activity_results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityResult"
+        access_rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessRow"
+        occupancy_rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/OccupancyRow"
+        week_summaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeekSummary"
+        violations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Violation"
+      required: [scenario, source, generated_at, summary, contract_results, activity_results, access_rows, occupancy_rows, week_summaries, violations]
+    ScheduleSummary:
+      type: object
+      properties:
+        activities:
+          type: integer
+        contracts:
+          type: integer
+        total_accesses:
+          type: number
+        scheduled_accesses:
+          type: number
+        nights_scheduled:
+          type: integer
+        eclo_nights:
+          type: integer
+        overrun_days:
+          type: integer
+        contracts_overrunning:
+          type: integer
+        priority_weighted_score:
+          type: number
+        excess_access_nights:
+          type: integer
+        feasibility:
+          type: string
+          enum: [feasible, review]
+        capacity_utilisation:
+          type: number
+      required: [activities, contracts, total_accesses, scheduled_accesses, nights_scheduled, eclo_nights, overrun_days, contracts_overrunning, priority_weighted_score, excess_access_nights, feasibility, capacity_utilisation]
+    ContractResult:
+      type: object
+      properties:
+        contract_number: { type: string }
+        description: { type: string }
+        priority: { type: integer }
+        planned_completion_date: { type: string }
+        simulated_completion_date: { type: string }
+        overrun_days: { type: integer }
+        activity_count: { type: integer }
+        access_count: { type: number }
+      required: [contract_number, description, priority, planned_completion_date, simulated_completion_date, overrun_days, activity_count, access_count]
+    ActivityResult:
+      type: object
+      properties:
+        activity_id: { type: string }
+        contract_number: { type: string }
+        activity_type: { type: string }
+        nature_of_works: { type: string }
+        total_accesses: { type: number }
+        scheduled_accesses: { type: number }
+        first_week: { type: integer }
+        last_week: { type: integer }
+        status: { type: string, enum: [scheduled, review] }
+      required: [activity_id, contract_number, activity_type, nature_of_works, total_accesses, scheduled_accesses, first_week, last_week, status]
+    AccessRow:
+      type: object
+      properties:
+        activity_id: { type: string }
+        access_seq: { type: integer }
+        week: { type: integer }
+        week_start: { type: string }
+        eclo: { type: integer }
+        access_night: { type: integer }
+        access_date: { type: string }
+        line: { type: string }
+      required: [activity_id, access_seq, week, week_start, eclo, access_night, access_date, line]
+    OccupancyRow:
+      type: object
+      properties:
+        activity_id: { type: string }
+        contract_number: { type: string }
+        week: { type: integer }
+        location_id: { type: string }
+        co_share_group: { type: string }
+        access_date: { type: string }
+        nature_of_works: { type: string }
+        access_type: { type: string }
+      required: [activity_id, contract_number, week, location_id, co_share_group, access_date, nature_of_works, access_type]
+    WeekSummary:
+      type: object
+      properties:
+        week: { type: integer }
+        week_start: { type: string }
+        week_end: { type: string }
+        access_count: { type: integer }
+        eclo_count: { type: integer }
+        activities: { type: integer }
+        alpha_count: { type: integer }
+        beta_count: { type: integer }
+        pressure: { type: string, enum: [clear, balanced, tight] }
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/DaySummary"
+      required: [week, week_start, week_end, access_count, eclo_count, activities, alpha_count, beta_count, pressure, days]
+    DaySummary:
+      type: object
+      properties:
+        date: { type: string }
+        day: { type: string }
+        accesses: { type: integer }
+        activities: { type: integer }
+        lines: { type: array, items: { type: string } }
+        eclo: { type: boolean }
+      required: [date, day, accesses, activities, lines, eclo]
+    Violation:
+      type: object
+      properties:
+        rule: { type: string }
+        severity: { type: string, enum: [hard, warning] }
+        detail: { type: string }
+      required: [rule, severity, detail]
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+
