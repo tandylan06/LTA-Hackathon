@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: corepack enable && corepack prepare pnpm@9 --activate && pnpm install --frozen-lockfile && pnpm run build:deploy
+    buildCommand: corepack enable && corepack prepare pnpm@9 --activate && pnpm install --frozen-lockfile --prod=false && pnpm run build:deploy
     startCommand: pnpm run start:deploy
     healthCheckPath: /api/healthz
     envVars:
